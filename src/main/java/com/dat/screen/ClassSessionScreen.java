@@ -21,15 +21,21 @@ public class ClassSessionScreen {
                     ", Branch: " + cs.getBranch().getIdBranch() +
                     ", Active: " + cs.isActive());
         }
+        System.out.println("__________________________");
+        System.out.println("Available Commands:");
+        System.out.println("  DETAIL [ID]               : View details of Class Session with ID");
+        System.out.println("  ATTENDANCE [ID]           : View attendance for Class Session with ID");
+        System.out.println("  ATTENDANCE VIEW [ID]      : View attendance with details for Class Session with ID");
+        System.out.println("  EXIT                      : Exit Class Session Screen");
         System.out.println("=======================");
 
         while (true) {
             Scanner sc = new Scanner(System.in);
             System.out.print("\nEnter command in ClassSessionScreen: ");
 
-            String command = sc.nextLine().trim();
+            String command = sc.nextLine().trim().toUpperCase();
 
-            if (command.equals("exit")) {
+            if (command.equals("EXIT")) {
                 System.out.println("Exiting Class Session Screen.");
                 break;
             }

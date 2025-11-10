@@ -3,165 +3,193 @@ package com.dat.screen;
 import com.dat.database.DatabaseManager;
 import com.dat.domain.StudentAttendance;
 import com.dat.enums.Attendance;
+import com.dat.enums.Evaluation;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class StudentAttendenceScreen {
+
+    // Sử dụng final cho các trường nếu chúng không thay đổi sau khi khởi tạo đối tượng này
     static class ClassSessionAndDate {
-        String idClassSession;
-        LocalDate attendanceDate;
+        final String idClassSession;
+        final LocalDate attendanceDate;
 
         public ClassSessionAndDate(String idClassSession, LocalDate attendanceDate) {
             this.idClassSession = idClassSession;
             this.attendanceDate = attendanceDate;
         }
 
-        public LocalDate getAttendanceDate() {
-            return attendanceDate;
-        }
-
-        public void setAttendanceDate(LocalDate attendanceDate) {
-            this.attendanceDate = attendanceDate;
-        }
-
-        public String getIdClassSession() {
-            return idClassSession;
-        }
-
-        public void setIdClassSession(String idClassSession) {
-            this.idClassSession = idClassSession;
-        }
+        public String getIdClassSession() { return idClassSession; }
+        public LocalDate getAttendanceDate() { return attendanceDate; }
     }
 
     public static void showStudentAttendenceScreen() {
         Scanner sc = new Scanner(System.in);
-        String idClassSession = "";
+        DatabaseManager database = DatabaseManager.getInstance();
 
         System.out.println("=== STUDENT ATTENDANCE SCREEN ===");
-        System.out.print("Enter Class Session ID to manage attendance or type 'exit' to return to the main menu: ");
-        String initialId = sc.nextLine().trim(); // Đổi tên biến tạm để tránh nhầm lẫn
+        System.out.println("Available Commands:");
+        System.out.println("  [Class-Session <Session ID>]   : Switch to a different class session");
+        System.out.println("  [Detail]                       : View attendance details");
+        System.out.println("  [Att <Student ID> <Status>]    : Mark attendance (PRESENT, ABSENT, EXCUSED)");
+        System.out.println("  [Eva <Student ID> <Evaluation>]: Update evaluation (GOOD, AVERAGE, POOR)");
+        System.out.println("  [Exit]                         : Exit screen");
+        System.out.println("------------------------------------------");
 
-        if (initialId.equalsIgnoreCase("exit")) {
-            System.out.println("Exiting Student Attendance Screen.");
-            return;
+        String initialId;
+        while (true) {
+            System.out.print("Enter Initial Class Session ID (or 'exit'): ");
+            initialId = sc.nextLine().trim().toUpperCase();
+            if (initialId.equalsIgnoreCase("EXIT")) return;
+            if (database.existsClassSession(initialId)) break;
+            System.out.println("Class Session ID " + initialId + " does not exist. Try again.");
         }
 
-        // Khởi tạo đối tượng sau khi chắc chắn không phải là "exit"
         ClassSessionAndDate sessionAndDate = new ClassSessionAndDate(initialId, LocalDate.now());
 
         while (true) {
-            System.out.printf("\nEnter command [Session: %s | Date: %s]: ",
+            System.out.printf("\n[Session: %s | Date: %s] > Enter command: ",
                     sessionAndDate.getIdClassSession(),
-                    sessionAndDate.getAttendanceDate().toString());
+                    sessionAndDate.getAttendanceDate());
 
             String command = sc.nextLine().trim();
-
-            if (command.equalsIgnoreCase("exit")) {
+            if (command.equalsIgnoreCase("EXIT")) {
                 System.out.println("Exiting Student Attendance Screen.");
                 break;
             }
-
             sessionAndDate = controller(command, sessionAndDate);
         }
     }
 
     static ClassSessionAndDate controller(String command, ClassSessionAndDate sessionAndDate) {
         DatabaseManager database = DatabaseManager.getInstance();
-        String idClassSession = sessionAndDate.idClassSession;
-        LocalDate attendanceDate = sessionAndDate.attendanceDate;
-
         String[] parts = command.trim().toUpperCase().split("\\s+");
 
-        if (parts.length == 0) {
-            System.out.println("Invalid command. Please try again.");
-            return sessionAndDate;
-        }
+        if (parts.length == 0 || parts[0].isEmpty()) return sessionAndDate;
 
-        String action = parts[0];
-
-        switch (action) {
+        switch (parts[0]) {
             case "CLASS-SESSION":
                 if (parts.length > 1) {
-                    System.out.println("Switched to session " + parts[1]);
-                    return new ClassSessionAndDate(
-                            parts[1],
-                            attendanceDate
-                    ); // <--- TRẢ VỀ ID MỚI
-                }
-                break;
-            case "DETAIL":
-                List<StudentAttendance> studentAttendance = database
-                        .getStudentAttendancesByClassSessionAndDate(idClassSession, attendanceDate);
-                showStudentAttendanceDetail(studentAttendance, sessionAndDate);
-                break;
-            case "ATT": // Example command: ATT SV001 PRESENT
-                if (parts.length == 3) {
-                    String studentId = parts[1];
-                    String statusStr = parts[2].toUpperCase(); // Normalize to uppercase
-
-                    try {
-                        // Attempt to convert the input string to an Attendance Enum value
-                        Attendance status = Attendance.valueOf(statusStr);
-
-                        // LOGIC SUCCESSFUL HERE
-                        // System.out.println("Marking " + status + " for student " + studentId);
-                        // database.markAttendance(currentSessionId, studentId, status);
-                        System.out.println("Attendance marked successfully.");
-
-                    } catch (IllegalArgumentException e) {
-                        // Caught invalid enum name (e.g., ATT SV001 LATE)
-                        System.out.println("Invalid attendance status: " + parts[2]);
-                        System.out.println("Valid statuses are: PRESENT, ABSENT, EXCUSED.");
+                    String newSessionId = parts[1];
+                    if (database.existsClassSession(newSessionId)) {
+                        System.out.println("Switched to session " + newSessionId);
+                        return new ClassSessionAndDate(newSessionId, sessionAndDate.attendanceDate);
+                    } else {
+                        System.out.println("Class Session ID " + newSessionId + " does not exist.");
                     }
                 } else {
-                    System.out.println("Invalid command format. Usage: ATT <Student ID> <Status>");
+                    System.out.println("Usage: CLASS-SESSION <Session ID>");
                 }
                 break;
-            case "EVA": // Evaluation
-                // Xử lý lệnh Evaluation ở đây nếu cần
+
+            case "DETAIL":
+                List<StudentAttendance> list = database.getStudentAttendancesByClassSessionAndDate(
+                        sessionAndDate.idClassSession, sessionAndDate.attendanceDate);
+                showStudentAttendanceDetail(list, sessionAndDate);
                 break;
+
+            case "ATT":
+                handleUpdateCommand(parts, sessionAndDate, Attendance.class,
+                        StudentAttendance::setAttendance, // Truyền method reference setter
+                        "Attendance marked successfully.",
+                        "ATT <Student ID> <Status>");
+                break;
+
+            case "EVA":
+                handleUpdateCommand(parts, sessionAndDate, Evaluation.class,
+                        StudentAttendance::setEvaluation, // Truyền method reference setter
+                        "Evaluation updated successfully.",
+                        "EVA <Student ID> <Evaluation>");
+                break;
+
             default:
-                System.out.println("Unknown command: " + action);
+                System.out.println("Unknown command: " + parts[0]);
         }
         return sessionAndDate;
     }
 
-    static void showStudentAttendanceDetail(
-            List<StudentAttendance> attendanceList,
-            ClassSessionAndDate classSessionAndDate) {
-        System.out.println("\n==========================================");
-        System.out.println("      ATTENDANCE REPORT"); // Thay thế chi tiết bằng "Báo cáo"
-        System.out.println("==========================================");
+    // === PHƯƠNG THỨC TỐI ƯU GENERIC CHO VIỆC CẬP NHẬT ===
+    private static <T extends Enum<T>> void handleUpdateCommand(
+            String[] parts,
+            ClassSessionAndDate sessionData,
+            Class<T> enumType,
+            BiConsumer<StudentAttendance, T> updater, // Hàm setter sẽ được truyền vào đây
+            String successMessage,
+            String usageFormat) {
 
-        // THÔNG TIN CHUYÊN NGHIỆP VỀ BẢN GHI
-        System.out.println("Session ID: " + classSessionAndDate.getIdClassSession());
-        System.out.println("Date: " + classSessionAndDate.getAttendanceDate());
-        System.out.println("------------------------------------------");
-
-        System.out.println("Total Records: " + attendanceList.size());
-        System.out.println("------------------------------------------");
-
-        if (attendanceList.isEmpty()) {
-            System.out.println("No attendance records found.");
+        if (parts.length != 3) {
+            System.out.println("Invalid command format. Usage: " + usageFormat);
             return;
-        } else {
-            System.out.printf("%-12s %-10s %-12s %-12s%n",
-                    "Date", "Student Name", "Attendance", "Evaluation");
-            System.out.println("------------------------------------------");
+        }
 
-            for (StudentAttendance record : attendanceList) {
-                System.out.printf("%-12s %-20s %-12s %-12s%n",
-                        record.getCreatedDate().toString(),
-                        record.getStudent().getNameStudent(),
-                        // Sử dụng trực tiếp toString() hoặc name() của Enum Attendance
-                        record.getAttendance(),
-                        // Kiểm tra null cho Evaluation trước khi in để tránh NullPointerException
-                        (record.getEvaluation() != null) ? record.getEvaluation() : "___"
+        String studentId = parts[1];
+        String valueStr = parts[2]; // Đã toUpperCase ở đầu controller
+
+        try {
+            // 1. Parse Enum (Tự động throw IllegalArgumentException nếu sai tên)
+            T enumValue = Enum.valueOf(enumType, valueStr);
+
+            DatabaseManager db = DatabaseManager.getInstance();
+            StudentAttendance record = db.getStudentAttendance(
+                    sessionData.attendanceDate, studentId, sessionData.idClassSession);
+
+            // 2. Kiểm tra tồn tại
+            if (record == null) {
+                System.out.printf("No record found for Student: %s, Date: %s, Session: %s%n",
+                        studentId, sessionData.attendanceDate, sessionData.idClassSession);
+                return;
+            }
+
+            // 3. Thực hiện update thông qua updater được truyền vào
+            updater.accept(record, enumValue);
+            db.updateStudentAttendance(record);
+            System.out.println(successMessage);
+
+        } catch (IllegalArgumentException e) {
+            // 4. Xử lý lỗi nhập sai Enum generic
+            String validValues = Arrays.stream(enumType.getEnumConstants())
+                    .map(Enum::name)
+                    .collect(Collectors.joining(", "));
+            System.out.println("Invalid value: " + valueStr);
+            System.out.println("Valid values are: [" + validValues + "]");
+        }
+    }
+
+    static void showStudentAttendanceDetail(List<StudentAttendance> list, ClassSessionAndDate sessionData) {
+        System.out.println("\n==========================================");
+        System.out.println("           ATTENDANCE REPORT");
+        System.out.println("==========================================");
+        System.out.println("Session: " + sessionData.getIdClassSession());
+        System.out.println("Date   : " + sessionData.getAttendanceDate());
+        System.out.println("Records: " + list.size());
+        System.out.println("------------------------------------------");
+
+        if (list.isEmpty()) {
+            System.out.println("No attendance records found.");
+        } else {
+            System.out.printf("%-12s %-18s %-12s %-12s %-10s%n", "Date", "Name", "Student ID", "Attendance", "Evaluation");
+            System.out.println("----------------------------------------------------------------------");
+            for (StudentAttendance r : list) {
+                System.out.printf("%-12s %-18s %-12s %-12s %-10s%n",
+                        r.getCreatedDate(),
+                        limitLength(r.getStudent().getNameStudent(), 18), // Optional: tránh vỡ layout nếu tên quá dài
+                        r.getStudent().getIdStudent(),
+                        r.getAttendance(),
+                        (r.getEvaluation() != null) ? r.getEvaluation() : "___"
                 );
             }
         }
-        System.out.println("===================================");
+        System.out.println("==========================================");
+    }
+
+    // Helper nhỏ để cắt chuỗi nếu quá dài khi in bảng
+    private static String limitLength(String str, int maxLength) {
+        if (str == null) return "";
+        return str.length() > maxLength ? str.substring(0, maxLength - 3) + "..." : str;
     }
 }

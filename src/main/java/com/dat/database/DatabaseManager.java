@@ -97,6 +97,10 @@ public class DatabaseManager {
         return classSessionDb.getClassSessionsByBranch(branchId);
     }
 
+    public boolean existsClassSession(String id) {
+        return classSessionDb.existsClassSession(id);
+    }
+
     public void addClassSession(ClassSession classSession) {
         classSessionDb.addClassSession(classSession);
     }
@@ -163,8 +167,8 @@ public class DatabaseManager {
         studentAttendanceDb.addStudentAttendance(studentAttendance);
     }
 
-    public boolean updateStudentAttendance(StudentAttendance studentAttendance) {
-        return studentAttendanceDb.updateStudentAttendance(studentAttendance);
+    public void updateStudentAttendance(StudentAttendance studentAttendance) {
+        studentAttendanceDb.updateStudentAttendance(studentAttendance);
     }
 
     public boolean deleteStudentAttendance(LocalDate date, String studentId, String classSessionId) {

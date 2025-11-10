@@ -52,6 +52,11 @@ public class ClassSessionDb {
         return new ArrayList<>(classSessions);
     }
 
+    public boolean existsClassSession(String id) {
+        return classSessions.stream()
+                .anyMatch(classSession -> classSession.getIdClassSession().equals(id));
+    }
+
     public ClassSession getClassSessionById(String id) {
         return classSessions.stream()
                 .filter(classSession -> classSession.getIdClassSession().equals(id))

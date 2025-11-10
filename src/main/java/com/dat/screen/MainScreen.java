@@ -11,7 +11,6 @@ public class MainScreen {
         showMainDetails();
 
         while (true) {
-            showMainDetails();
             System.out.print("\nEnter command: ");
 
             String command = sc.nextLine().trim();
@@ -33,7 +32,7 @@ public class MainScreen {
         System.out.println("  [List]    : View Student List");
         System.out.println("  [History] : View Attendance Logs");
         System.out.println("  [Attendance] : Manage Student Attendance");
-        System.out.println("  [ClassSession] : View specific session list");
+        System.out.println("  [Class-Session] : View specific session list");
         System.out.println("  [Exit]    : Exit the program");
         System.out.println("------------------------------------------");
         System.out.println("Note: Type 'Menu' to return to this screen.");
